@@ -138,9 +138,9 @@ imperative_rule:  "subtract"i quantity "from the"i roll_kind "roll" -> subtract_
                |  obtainable_property -> subject_obtains_property
 
 obtainable_property: subject "has"i "a" quantity "+ invulnerable save"i -> obtains_invulnerable_save
-                   | [weapon_qualifier] "weapons equipped by"i subject "have the"i weapon_ability "ability" -> obtain_weapon_ability
+                   | [weapon_qualifier] "weapons equipped by"i subject "have the"i weapon_ability_list ( "ability" | "abilities" ) -> obtain_weapon_ability
 
-
+weapon_ability_list: weapon_ability ( "and"i weapon_ability )*
 boolean_expression: subject "is"i is_constraint
 
 subject: constrained_subject                     -> list_of_subjects 

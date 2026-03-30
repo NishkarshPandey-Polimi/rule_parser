@@ -429,33 +429,58 @@ class ToAst(Interpreter):
     def this_model(self, node):
         (typ, ) = self.visit_children(node)
         return self.add(ThisSubject.make(typ)).result
+    
+#New Obtain Weapon Ability 
 
     def obtain_weapon_ability(self, node):
         qualifier = self.visit(node.children[0]) if node.children[0] is not None else None
-        weapon_ability = self.visit(node.children[2])
+        weapon_ability_list_node = node.children[2]
+        
         if qualifier is None:
             qualifier = WeaponQualifierKindAttr(WeaponQualifierKind.ANY)
-        to_return = self.add(ObtainWeaponAbility.make(ability=weapon_ability, qualifier=qualifier))
-        with self.make_scope(region=to_return.beneficient) as scope:
-            reserved_index = self.reserve_index()
-            subject = self.visit(node.children[1])
-            self.make_referrable(subject, reserved_index)
-            self.add(Yield.make(subject))
+        
+       
+        abilities = []
+        if weapon_ability_list_node.data == 'weapon_ability_list':
+            
+            for child in weapon_ability_list_node.children:
+                if isinstance(child, Tree):
+                    abilities.append(self.visit(child))
+        else:
+            
+            abilities.append(self.visit(weapon_ability_list_node))
+        
+        
+        last_op = None
+        for weapon_ability in abilities:
+            to_return = self.add(ObtainWeaponAbility.make(ability=weapon_ability, qualifier=qualifier))
+            with self.make_scope(region=to_return.beneficient) as scope:
+                reserved_index = self.reserve_index()
+                subject = self.visit(node.children[1])
+                self.make_referrable(subject, reserved_index)
+                self.add(Yield.make(subject))
 
-        with self.make_scope(region=to_return.condition) as scope:
-            self.add(Yield.make(self.add(TrueOp.make())))
+            with self.make_scope(region=to_return.condition) as scope:
+                self.add(Yield.make(self.add(TrueOp.make())))
 
-
-        with self.make_scope(region=to_return.effect) as scope:
-            self.add(Yield.make())
-
-        return to_return
+            with self.make_scope(region=to_return.effect) as scope:
+                self.add(Yield.make())
+            
+            last_op = to_return
+        
+        return last_op
+    
+# Code Change End 
 
     def devastating_wounds(self, node):
         return WeaponAbilityKindAttr(WeaponAbilityKind.DEVASTATING_WOUNDS)
 
     def letal_hits(self, node):
         return WeaponAbilityKindAttr(WeaponAbilityKind.LETHAL_HITS)
+    
+#New Function Assault
+    def assault(self, node):
+        return WeaponAbilityKindAttr(WeaponAbilityKind.ASSAULT)
 
     def make_referrable(self, subject: SSAValue, index):
         self.add(MakeReferrable.make(subject, index))

@@ -57,6 +57,18 @@ class RLCSerializer(ModulePass):
         self.visit_expression(node.lhs)
         self.print(" and ")
         self.visit_expression(node.rhs)
+        
+# Update :-  Allows HasKeyword
+    @visit_expression.register
+    def _(self, node: HasKeyword):
+        self.visit_expression(node.unit)
+        self.print(".has_keyword(")
+        self.visit_expression(node.keyword)
+        self.print(")")
+
+    @visit_expression.register
+    def _(self, node: KeywordAttr):
+        self.print(f"Keyword::{node.data}")
 
     @visit_expression.register
     def _(self, node: Yield):
