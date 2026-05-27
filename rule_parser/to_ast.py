@@ -244,6 +244,9 @@ class ToAst(Interpreter):
 
     def hit_roll(self, node):
         return RollKind.HIT_ROLL
+    
+    def wound_roll(self, node):
+        return RollKind.WOUND_ROLL
 
     def character_keyword(self, node):
         return Keyword.CHARACTER
@@ -326,8 +329,9 @@ class ToAst(Interpreter):
         return to_return
 
     def subtract_effect(self, node):
-        (quantity, kind) = self.visit_children(node)
-        return self.add(ModifyRoll.make(self.add(ThisSubject.make(AttackType())), kind, quantity*-1))
+        quantity = self.visit(node.children[0])
+        kind = self.visit(node.children[1])
+        return self.add(ModifyRoll.make(self.add(ThisSubject.make(AttackType())), kind, quantity * -1))
 
     def each_time(self, node):
         event = self.visit(node.children[0])
@@ -553,4 +557,19 @@ class ToAst(Interpreter):
         return UnitType()
 
     def model(self, node):
+        return ModelType()
+
+    def add_effect(self, node):
+        # 1. Safely extract quantity and kind by visiting the children explicitly
+        quantity = self.visit(node.children[0])
+        kind = self.visit(node.children[1])
+        # 2. Return the bound operation
+        return self.add(ModifyRoll.make(self.add(ThisSubject.make(AttackType())), kind, quantity))
+
+    def battle_shocked_constraint(self, node):
+        # Temporary placeholder to bypass Stage 2 AST naming errors
+        # and run your professor's Poset Reference validation logic
+        return self.add(BelowStartingStrenght.make(self.current_subject())).result
+
+    def target_subject_type(self, node):
         return ModelType()

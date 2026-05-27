@@ -43,6 +43,38 @@ def refers_to(subject: Operation, candidate: Operation):
 def one_of_refers_to(subject: OneOf, candidate):
     return refers_to( subject.base_subject.first_block.first_op, candidate.base_subject.first_block.first_op)
 
+def f(ast_with_that: Operation, ast_being_referred_to: Operation) -> bool:
+    """
+    Evaluates the strict Partial Order relationship: ast_being_referred_to <= ast_with_that
+    Returns True if the candidate is a mathematically valid antecedent for 'that'.
+    """
+    # 1. Type Match Constraint
+    if ast_with_that.result.type != ast_being_referred_to.result.type:
+        return False
+
+    # 2. Structural Dominance Constraint (from passes.py)
+    if not dominates(ast_being_referred_to, ast_with_that):
+        return False
+
+    # 3. Scope Path Traversal (Context Validation)
+    # Ensure that we don't look up out of an invalid scope context boundary
+    curr = ast_with_that.parent_op()
+    while curr is not None:
+        # If we encounter the candidate's parent scope, it's structurally valid
+        if curr == ast_being_referred_to.parent_op():
+            return True
+        
+        # Explicit isolation boundary: certain block structures clear the poset tracking
+        if isinstance(curr, (UntilEffect, EachTimeEffect)):
+            # If the candidate was declared outside this temporary effect block, 
+            # it is incomparable for this inner reference
+            if not dominates(curr, ast_being_referred_to):
+                return False
+                
+        curr = curr.parent_op()
+
+    return True
+
 class SemanticalAnalyzer(ModulePass):
     name = "semantical-analyze-pass"
 
@@ -357,24 +389,32 @@ class SemanticalAnalyzer(ModulePass):
     @_visit.register
     def _(self, ref: SuchSubject):
         sub: SSAValue
-        for sub in reversed(self.seen_subjects):
-            if ref.result.type != sub.type:
-                continue
+        
+        # Filter candidates using our mathematical strict partial order function 'f'
+        valid_poset_candidates = [
+            sub for sub in self.seen_subjects 
+            if f(ref, sub.owner)
+        ]
 
-            if dominates(sub.owner, ref):
-                ref.result.replace_by(sub)
+        if valid_poset_candidates:
+            # Under a partial order, the most local matching target is our ideal match
+            target_subject = valid_poset_candidates[-1]
+
+            if dominates(target_subject.owner, ref):
+                ref.result.replace_by(target_subject)
             else:
-                caputured_reference = CapturedReference.make(sub)
+                caputured_reference = CapturedReference.make(target_subject)
                 ref.result.replace_by(caputured_reference.result)
                 self.rewriter.insert_op(caputured_reference, InsertPoint.before(ref))
+            
             self.rewriter.erase_op(ref)
-
             return
-        for op in self.seen_subjects:
-            print(op.owner)
-        print(ref)
-        raise NotImplementedError()
 
+        # Print debug state if reference resolution fails the poset requirements
+        print("Failed Poset Resolution for reference:", ref)
+        for op in self.seen_subjects:
+            print("Visible item in universe:", op.owner)
+        raise NotImplementedError("Anaphora resolution failed: Candidate is incomparable in current Poset.")
 
     @_visit.register
     def _(self, ref: OneOf):

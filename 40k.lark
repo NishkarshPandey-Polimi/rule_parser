@@ -126,10 +126,11 @@ time_qualifier: "start"i -> time_start
               | "end"i   -> time_end
 
 conditional_effect: "while"i boolean_expression ","i effect -> while_true_effect
-                  | "if"i boolean_expression ","i effect    -> if_effect 
+                  | "if"i boolean_expression ","i effect [ "as well"i ] -> if_effect
                   | "if it does,"i effect                   -> if_it_does 
 
 imperative_rule:  "subtract"i quantity "from the"i roll_kind "roll" -> subtract_effect
+               | "add"i quantity "to the"i roll_kind "roll" -> add_effect 
                | "you gain"i quantity "cp"i -> gain_cps 
                | "worsen the"i characteristic "characteristic of"i subject "by"i quantity -> worsen_characteristic
                | subject "must take a battle-shock test"i -> generate_battle_shock_test
@@ -147,6 +148,7 @@ subject: constrained_subject                     -> list_of_subjects
        | "a"i constrained_subject                -> singular_subject 
        | "an"i constrained_subject               -> singular_subject
        | "one"i constrained_subject              -> singular_subject
+       | "the"i constrained_subject              -> singular_subject
 
 constrained_subject: constrained_subject constraint          -> constrained_subject_with_constraint
        | forward_constraint constrained_subject              -> forward_constrained_subject
@@ -165,6 +167,7 @@ subject_type: "unit"i                           -> unit
             | "models"i                         -> model
             | "stratagem"i                      -> stratagem_subject_type
             | "ability"i                        -> ability_subject 
+            | "target"i                         -> target_subject_type
 
 forward_constraint: "enemy"i                -> enemy 
                   | "allied"i               -> allied 
@@ -177,7 +180,8 @@ constraint: is_constraint
 
 is_constraint: "within"i quantity "\" of" subject         -> within_constraint 
              | "leading" subject                          -> leading_constraint
-             | "below its starting strength"i             -> below_its_starting_strenght 
+             | "below its starting strength"i             -> below_its_starting_strenght
+             | "battle-shocked"i                          -> battle_shocked_constraint
              | "within engagement range of"i subject      -> within_engagement_range
              | "in" subject                               -> subject_in_subject
 
